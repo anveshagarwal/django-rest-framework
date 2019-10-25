@@ -131,10 +131,15 @@ class UniqueTogetherValidator:
         """
         # If this is an update, then any unprovided field should
         # have it's value set based on the existing instance attribute.
+
         if self.instance is not None:
             for field_name in self.fields:
                 if field_name not in attrs:
-                    attrs[field_name] = getattr(self.instance, field_name)
+                    if field_name == self.serializer.fields[field_name].source:
+                        attrs[field_name] = getattr(self.instance, field_name)
+                    else:
+                        attrs[self.serializer.fields[field_name].source] = getattr(self.instance, self.serializer.fields[field_name].source)
+
 
         # Determine the filter keyword arguments and filter the queryset.
         filter_kwargs = {
@@ -142,8 +147,12 @@ class UniqueTogetherValidator:
                 field_name
                 if field_name == self.serializer.fields[field_name].source
                 else self.serializer.fields[field_name].source
-            ): attrs[field_name]
-            for field_name in self.fields
+                ): (
+                    attrs[field_name]
+                    if self.instance is None
+                    else attrs[self.serializer.fields[field_name].source]
+                )
+                for field_name in self.fields
         }
         return qs_filter(queryset, **filter_kwargs)
 
